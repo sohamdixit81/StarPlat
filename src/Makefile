@@ -1,13 +1,16 @@
 EXPENDABLES_WINDOWS = bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o parser/y.tab.c parser/lex.yy.c bin/deviceVarsAnalyser.o bin/analyserUtil.o bin/dv*.o
 EXPENDABLES = bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o parser/y.tab.c parser/lex.yy.c  bin/deviceVarsAnalyser.o
 ANALYSER = bin/dataRaceAnalyser.o
-PROGRAMS = bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o bin/cu_dsl_cpp_generator.o  bin/ac_dsl_cpp_generator.o bin/om_dsl_cpp_generator.o bin/mpi_dsl_cpp_generator.o
+PROGRAMS = bin/llvmBackend.o bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o bin/cu_dsl_cpp_generator.o  bin/ac_dsl_cpp_generator.o bin/om_dsl_cpp_generator.o bin/mpi_dsl_cpp_generator.o
 #bin/ac_dsl_cpp_generator.o 
 #bin/om_dsl_cpp_generator.o
 A_PROGRAM = bin/attachPropAnalyser.o bin/dataRaceAnalyser.o bin/deviceVarsAnalyser.o bin/analyserUtil.o
 
 CFLAGS  = -g 
 CC = g++ -std=c++11 #-Wall # -Wno-unused-variable #-fsanitize=address
+
+LLVM_CXX_FLAGS = $(shell llvm-config --cppflags --cxxflags)
+LLVM_LD_FLAGS = $(shell llvm-config --ldflags --system-libs --libs core)
 
 all: starplat
 
@@ -20,8 +23,13 @@ all: starplat
 
 #~ cuda: generator_cuda starplat_cuda clean_windows
 
+
+
 #~ starplat_cuda: bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o $(A_PROGRAM)
 #~ 	$(CC) bin/MainContext.o bin/ASTHelper.o bin/SymbolTableBuilder.o bin/SymbolTableNew.o bin/y.tab.o bin/lex.yy.o bin/dsl_cpp_generator.o $(A_PROGRAM) -o starplat
+
+bin/llvmBackend.o: backends/backend_llvm/llvmBackend.h backends/backend_llvm/llvmBackend.cpp
+	$(CC) $(CFLAGS) -c $(LLVM_CXX_FLAGS) backends/backend_llvm/llvmBackend.cpp -o bin/llvmBackend.o
 
 #CUDA
 bin/cu_dsl_cpp_generator.o: backends/backend_cuda/dsl_cpp_generator.cpp backends/dslCodePad.h
@@ -30,7 +38,7 @@ bin/cu_dsl_cpp_generator.o: backends/backend_cuda/dsl_cpp_generator.cpp backends
 #openACC
 bin/ac_dsl_cpp_generator.o: backends/backend_openACC/dsl_cpp_generator.cpp backends/dslCodePad.h
 	$(CC) $(CFLAGS) -c backends/backend_openACC/dsl_cpp_generator.cpp -o bin/ac_dsl_cpp_generator.o
-	
+
 #omp
 bin/om_dsl_cpp_generator.o: backends/backend_omp/dsl_cpp_generator.cpp backends/dslCodePad.h
 	$(CC) $(CFLAGS) -c backends/backend_omp/dsl_cpp_generator.cpp -o bin/om_dsl_cpp_generator.o
@@ -40,7 +48,7 @@ bin/mpi_dsl_cpp_generator.o: backends/backend_mpi/dsl_cpp_generator.cpp backends
 	$(CC) $(CFLAGS) -c backends/backend_mpi/dsl_cpp_generator.cpp -o bin/mpi_dsl_cpp_generator.o
 
 starplat: bin $(PROGRAMS) $(A_PROGRAM) 
-	$(CC)  $(PROGRAMS) $(A_PROGRAM) -o StarPlat
+	$(CC) $(PROGRAMS) $(A_PROGRAM) $(LLVM_LD_FLAGS) -o StarPlat
 
 
 #~ bin/SymbolTableBuilder.o: symbolutil/SymbolTableBuilder.cpp
@@ -106,6 +114,6 @@ clean_windows:
 	rm -f $(EXPENDABLES_WINDOWS)
 
 clean:
-#~ 	rm -f $(EXPENDABLES)
-	rm bin/*.o StarPlat StarPlat.exe
+	rm $(EXPENDABLES)
+	rm *.o bin/*.o StarPlat StarPlat.exe
 	rmdir bin

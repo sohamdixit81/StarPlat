@@ -22,7 +22,10 @@
 /* UNCOMMENT IT TO GENERATE FOR  OPENACC BACKEND */
 #include "../backends/backend_openACC/dsl_cpp_generator.h"
 
+#include "../backends/backend_llvm/llvmBackend.h"
+
 #include "../symbolutil/SymbolTableBuilder.h"
+
 
 extern "C" int yyparse (void);
 

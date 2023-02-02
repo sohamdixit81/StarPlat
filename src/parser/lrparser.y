@@ -7,9 +7,12 @@
 	#include "../analyser/attachProp/attachPropAnalyser.h"
 	#include "../analyser/dataRace/dataRaceAnalyser.h"
 	#include "../analyser/deviceVars/deviceVarsAnalyser.h"
+
+#include <string>
+
 	#include<getopt.h>
 	//#include "../symbolutil/SymbolTableBuilder.cpp"
-     
+
 	void yyerror(const char *);
 	int yylex(void);
     extern FILE* yyin;
@@ -438,7 +441,6 @@ void yyerror(const char *s) {
     fprintf(stderr, "%s\n", s);
 }
 
-
 int main(int argc,char **argv) 
 {
   
@@ -459,6 +461,18 @@ int main(int argc,char **argv)
   bool dynamicGen = false;
   bool optimize = false;
 
+  char *llvmModuleName = NULL;
+  bool llvmLower = false;
+  if (argc == 4) {
+    if (std::string(argv[1])== "-emit-llvm") {
+      llvmLower = true;
+      fileName = argv[2];
+      llvmModuleName = argv[3];
+      backendTarget = (char*)"LLVM";
+    }
+  }
+
+  if (!llvmLower) {
   while ((opt = getopt(argc, argv, "sdf:b:o")) != -1) 
   {
      switch (opt) 
@@ -488,6 +502,7 @@ int main(int argc,char **argv)
         break;
      }
   }
+  }
    
    printf("fileName %s\n",fileName);
    printf("Backend Target %s\n",backendTarget);
@@ -503,14 +518,14 @@ int main(int argc,char **argv)
    }
    else
     {
-		if(!((strcmp(backendTarget,"omp")==0)||(strcmp(backendTarget,"mpi")==0)||(strcmp(backendTarget,"cuda")==0) || (strcmp(backendTarget,"acc")==0)))
+		if(!((strcmp(backendTarget,"LLVM")==0)||(strcmp(backendTarget,"omp")==0)||(strcmp(backendTarget,"mpi")==0)||(strcmp(backendTarget,"cuda")==0) || (strcmp(backendTarget,"acc")==0)))
 		   {
 			  fprintf(stderr, "Specified backend target is not implemented in the current version!\n");
 			   exit(-1);
 		   }
 	}
 
-   if(!(staticGen || dynamicGen)) {
+   if(!llvmLower && !(staticGen || dynamicGen)) {
 		fprintf(stderr, "Type of graph(static/dynamic) not specified!\n");
 		exit(-1);
      }
@@ -536,7 +551,10 @@ int main(int argc,char **argv)
     std::cout << "at 1" << std::endl;
 	stBuilder.buildST(frontEndContext.getFuncList());
 	std::cout << "at 2" << std::endl;
-
+  
+  if (llvmLower) {
+    lowerToLLVM(llvmModuleName);
+  }
 	if(staticGen)
 	  {
 		  /*
